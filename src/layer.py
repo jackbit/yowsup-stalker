@@ -1,6 +1,9 @@
 import sys
 import os
 import datetime
+import tempfile
+import json
+import base64
 
 from yowsup.layers.interface import YowInterfaceLayer, ProtocolEntityCallback
 from yowsup.layers.protocol_receipts.protocolentities import *
@@ -13,7 +16,6 @@ from yowsup.layers import YowLayerEvent
 
 from yowsup.layers.protocol_notifications.protocolentities.notification_picture_set import SetPictureNotificationProtocolEntity
 from yowsup.layers.protocol_notifications.protocolentities.notification_picture_delete import DeletePictureNotificationProtocolEntity
-
 class QueueLayer(YowInterfaceLayer):
     PROP_RECEIPT_AUTO = "org.openwhatsapp.yowsup.prop.cli.autoreceipt"
     PROP_RECEIPT_KEEPALIVE = "org.openwhatsapp.yowsup.prop.cli.keepalive"
@@ -146,15 +148,44 @@ class QueueLayer(YowInterfaceLayer):
     def getMediaMessageBody(self, message):
         if message.getMediaType() in ("image", "audio", "video"):
             return self.getDownloadableMediaMessageBody(message)
+        elif message.getMediaType() in ("location"):
+            return self.getLocationMessageBody(message)
         else:
             return "[Media Type: %s]" % message.getMediaType()
 
+    def getLocationMessageBody(self, message):
+        #out = "{ \"media\": \"%s\"," % message.getMediaType()
+        #out += "\"latitude\": \"%s\"," % message.getLatitude()
+        #out += "\"longitude\": \"%s\"," % message.getLongitude()
+        #out += "\"address\": \"%s\"," % message.getLocationName()
+        #out += "\"url\": \"%s\"}" % message.getLocationURL()
+        #return out
+        return {
+          "media": message.getMediaType(),
+          "latitude": message.getLatitude(),
+          "longitude": message.getLongitude(),
+          "address": message.getLocationName(),
+          "url": message.getLocationURL()
+        }
+
     def getDownloadableMediaMessageBody(self, message):
-        return "[Media Type:{media_type}, Size:{media_size}, URL:{media_url}]".format(
-            media_type=message.getMediaType(),
-            media_size=message.getMediaSize(),
-            media_url=message.getMediaUrl()
-        )
+        #out = "{ \"mimetype\": \"%s\"," % message.getMimeType()
+        #out += "\"url\": \"%s\"," % message.getMediaUrl()
+        #out += "\"size\": \"%s\"," % message.getMediaSize()
+        #out += "\"filename\": \"%s\"," % message.getFileName()
+        #out += "\"filehash\": \"%s\"," % base64.b64encode(message.getFileHash())
+        #out += "\"mediakey\": \"%s\"," % base64.b64encode(message.getMediaKey())
+        #out +="\"cryptkey\": \"%s\"}" % message.getCryptKey()
+        #return out
+        return {
+          "mimetype": message.getMimeType(),
+          "url": message.getMediaUrl().decode('ascii'),
+          "size": message.getMediaSize(),
+          "filename": message.getFileName(),
+          "filehash": base64.b64encode(message.getFileHash()).decode('ascii'),
+          "mediakey": base64.b64encode(message.getMediaKey()).decode('ascii'),
+          "cryptkey": message.getCryptKey()
+        }
 
     def aliasToJid(self, calias):
         jid = "%s@s.whatsapp.net" % calias
